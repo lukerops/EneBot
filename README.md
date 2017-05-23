@@ -1,0 +1,2 @@
+# EneBot
+A Discord Bot
