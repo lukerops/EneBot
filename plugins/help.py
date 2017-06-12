@@ -77,9 +77,7 @@ class Help(Plugin):
 
     @command(usage='help', description='Mostra menssagem de ajuda.')
     async def help(self, message, *args):
-        if message.author.bot:
-            return
-        if message.author.id == self.ene.user.id:
+        if message.author.bot or message.author.id == self.ene.user.id:
             return
         help_messages = await self.generate_help()
         if help_messages == [""]:

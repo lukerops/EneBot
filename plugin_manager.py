@@ -26,3 +26,8 @@ class PluginManager:
             if plugin.is_beta:
                 pass
         return plugins
+
+    async def get_plugin(self, name):
+        for plugin in self.plugins:
+            if plugin.plugin_name == name:
+                return plugin

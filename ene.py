@@ -14,6 +14,7 @@ class Ene(discord.Client):
 
     async def on_ready(self):
         log.info('Connected')
+
         plugins = await self.plugin_manager.get_plugins()
         for plugin in plugins:
             self.loop.create_task(plugin.on_ready())
@@ -26,7 +27,6 @@ class Ene(discord.Client):
             server.owner.name,
             server.name
         ))
-        log.debug('Adding server {}\'s id to db'.format(server.id))
         plugins = await self.plugin_manager.get_plugins()
         for plugin in plugins:
             if plugin.is_global:
@@ -39,15 +39,14 @@ class Ene(discord.Client):
         ))
 
     async def on_message(self, message):
-        '''if message.channel.is_private:
-            return'''
         if message.author.__class__ != discord.Member and message.author.__class__ != discord.User :
             return
 
-        message.content = message.content[len(self.prefix):]
-        plugins = await self.plugin_manager.get_plugins()
-        for plugin in plugins:
-            self.loop.create_task(plugin._on_message(message))
+        if self.prefix == message.content[:len(self.prefix)]:
+            message.content = message.content[len(self.prefix):]
+            plugins = await self.plugin_manager.get_plugins()
+            for plugin in plugins:
+                self.loop.create_task(plugin._on_message(message))
 
     async def on_message_edit(self, before, after):
         if before.channel.is_private:
