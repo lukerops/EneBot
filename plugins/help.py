@@ -25,7 +25,7 @@ async def get_help_info(self):
 class Help(Plugin):
     plugin_name = 'Help'
     plugin_version = '0.0.1'
-    plugin_description = 'Gera menssagem de ajuda.'
+    plugin_description = 'Gera mensagem de ajuda.'
     is_global = True
     is_beta = False
 
@@ -73,7 +73,7 @@ class Help(Plugin):
         messages = '**Plugins**\n'
         for plugin in plugins:
             messages += '    **{}** v{} - {}\n'.format(plugin.plugin_name, plugin.plugin_version, plugin.plugin_description)
-        await self.ene.send_message(message.channel, messages)
+        await self.ene._send_message(message.channel, messages)
 
     @command(usage='help', description='Mostra menssagem de ajuda.')
     async def help(self, message, *args):
@@ -83,4 +83,4 @@ class Help(Plugin):
         if help_messages == [""]:
             help_messages = ["There's no command to show :cry:"]
         for msg in help_messages:
-            await self.ene.send_message(message.channel, msg)
+            await self.ene._send_message(message.channel, msg)

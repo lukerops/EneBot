@@ -7,6 +7,7 @@ import urllib.request
 import urllib.error
 import discord
 import asyncio
+import youtube_dl
 
 if not discord.opus.is_loaded():
     # the 'opus' library here is opus.dll on windows
@@ -79,29 +80,34 @@ class VoiceState:
 
     async def audio_player_task(self):
         opts = {
-            'default_search': 'auto',
-            'format': 'm4a[abr>0]/bestaudio/worstvideo[height<=360]',
+            'format': 'webm[abr>0]/bestaudio/best',
+            'noplaylist': True,
+            'no_warnings': True,
+            'nocheckcertificate': True,
+            'logtostderr': False,
             'quiet': True,
+            'default_search': 'auto',
+            'prefer_ffmpeg': True
         }
         while True:
             self.play_next_song.clear()
             entry = await self.songs.get()
             entry.player = await self.voice.create_ytdl_player(entry.player.url, ytdl_options=opts, after=self.toggle_next)
             self.current = entry
-            await self.ene.send_message(self.current.channel, '**[Musica]** Tocando ' + str(self.current))
+            await self.ene._send_message(self.current.channel, '**[Musica]** Tocando ' + str(self.current))
             self.current.player.start()
             self.current.player.volume = self.vol
             await self.play_next_song.wait()
 
 class Music(Plugin):
     plugin_name = 'Music'
-    plugin_version = '0.0.1'
+    plugin_version = '0.0.2'
     plugin_description = 'Toca musicas.'
     is_global = True
     is_beta = False
 
     def __init__(self, *args, **kwargs):
-        Plugin.__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.voice_states = {}
 
     def get_voice_state(self, server):
@@ -134,18 +140,18 @@ class Music(Plugin):
         try:
             await self.create_voice_client(channel)
         except discord.ClientException:
-            await self.ene.send_message(msg.channel, 'Already in a voice channel...')
+            await self.ene._send_message(msg.channel, 'Already in a voice channel...')
         except discord.InvalidArgument:
-            await self.ene.send_message(msg.channel, 'This is not a voice channel...')
+            await self.ene._send_message(msg.channel, 'This is not a voice channel...')
         else:
-            await self.ene.send_message(msg.channel, 'Ready to play audio in ' + channel.name)
+            await self.ene._send_message(msg.channel, 'Ready to play audio in ' + channel.name)
 
 
     async def summon(self, msg):
         """Summons the bot to join your voice channel."""
         summoned_channel = msg.author.voice_channel
         if summoned_channel is None:
-            await self.ene.send_message(msg.channel, 'Você não está em um canal de voz.')
+            await self.ene._send_message(msg.channel, 'Você não está em um canal de voz.')
             return False
 
         state = self.get_voice_state(msg.server)
@@ -172,9 +178,15 @@ class Music(Plugin):
             if not success:
                 return
 
-        url = url[0]
+        if len(url) > 1:
+            for i in range(len(url) - 1):
+                message.content = url[i]
+                await self.play(message)
+            url = url[-1]
+        else:
+            url = url[0]
 
-        if not 'watch?v=' in url and 'list=' in url:
+        if not 'watch?v=' in url and 'list=' in url and 'youtube' in url:
             nlist = url.find('list=')
             elist = url.find('&', nlist)
             if elist != -1:
@@ -193,12 +205,13 @@ class Music(Plugin):
                 sTUBE = str(yTUBE)
             except urllib.error.URLError as e:
                 print(e.reason)
+                return
 
             tmp_mat = re.compile(r'watch\?v=\S+?list=' + cPL)
             mat = re.findall(tmp_mat, sTUBE)
 
             if mat:
-                await self.ene.send_message(message.channel, '**Adicionando Playlist...**')
+                await self.ene._send_message(message.channel, '**Adicionando Playlist...**')
 
                 for PL in mat:
                     yPL = str(PL)
@@ -209,14 +222,14 @@ class Music(Plugin):
                 all_url = list(set(final_url))
 
                 for i in range(len(all_url) - 1):
-                    message.content = 'play ' + all_url[i]
+                    message.content = all_url[i]
                     await self.play(message)
                     '''await self.play(message, all_url[i])'''
 
-                url = all_url[len(all_url) - 1]
+                url = all_url[-1]
 
             else:
-                await self.ene.send_message(message.channel, 'Nenhum video encontrado nesse link')
+                await self.ene._send_message(message.channel, 'Nenhum video encontrado nesse link')
                 return
 
         try:
@@ -224,10 +237,10 @@ class Music(Plugin):
 
         except Exception as e:
             fmt = 'An error occurred while processing this request: ```py\n{}: {}\n```'
-            await self.ene.send_message(message.channel, fmt.format(type(e).__name__, e))
+            await self.ene._send_message(message.channel, fmt.format(type(e).__name__, e))
         else:
             entry = VoiceEntry(message, playlist)
-            await self.ene.send_message(message.channel, '**[Musica]** Adicionado ' + str(entry))
+            await self.ene._send_message(message.channel, '**[Musica]** Adicionado ' + str(entry))
             await state.songs.put(entry)
 
     @command(usage='volume', description='Muda o volume da musica.')
@@ -240,7 +253,7 @@ class Music(Plugin):
         if state.is_playing():
             player = state.player
             player.volume = state.vol = value
-            await self.ene.send_message(msg.channel, 'Mudando volume para {:.0%}'.format(player.volume))
+            await self.ene._send_message(msg.channel, 'Mudando volume para {:.0%}'.format(player.volume))
 
     @command(usage='pause', description='Pausa a musica.')
     async def pause(self, msg, *args):
@@ -296,24 +309,24 @@ class Music(Plugin):
 
         state = self.get_voice_state(msg.server)
         if not state.is_playing():
-            await self.ene.send_message(msg.channel, 'Não estou tocando nenhuma musica.')
+            await self.ene._send_message(msg.channel, 'Não estou tocando nenhuma musica.')
             return
 
         voter = msg.author
         if voter == state.current.requester:
-            await self.ene.send_message(msg.channel, 'Requester requested skipping song...')
+            await self.ene._send_message(msg.channel, 'Requester requested skipping song...')
             state.skip()
         elif voter.id not in state.skip_votes:
             state.skip_votes.add(voter.id)
             total_votes = len(state.skip_votes)
             if total_votes >= 3:
-                await self.ene.send_message(msg.channel, 'Já que vários querem, estou trocando de musica...')
+                await self.ene._send_message(msg.channel, 'Já que vários querem, estou trocando de musica...')
                 state.skip()
             else:
-                await self.ene.send_message(msg.channel,
+                await self.ene._send_message(msg.channel,
                                             'Seu voto foi adicionado a contagem, agora temos [{0}/3]'.format(total_votes))
         else:
-            await self.ene.send_message(msg.channel, 'Você já votou.')
+            await self.ene._send_message(msg.channel, 'Você já votou.')
 
     @command(usage='playing', description='Mostra os dados da musica atual.')
     async def playing(self, msg, *args):
@@ -321,10 +334,10 @@ class Music(Plugin):
 
         state = self.get_voice_state(msg.server)
         if state.current is None:
-            await self.ene.send_message(msg.channel, 'Não estou tocando nada.')
+            await self.ene._send_message(msg.channel, 'Não estou tocando nada.')
         else:
             skip_count = len(state.skip_votes)
-            await self.ene.send_message(msg.channel,
+            await self.ene._send_message(msg.channel,
                                         'Estou tocando {0} [skips: {1}/3]\n**{0.player.url}**'.format(state.current,
                                                                                                       skip_count))
 
@@ -345,11 +358,9 @@ class Music(Plugin):
                 while (num < numMax):
                     fmt += '    **[Musica: {0}/{1}]** '.format(num + 1, qnt) + str(playlist[num]) + '\n'
                     num += 1
-                await self.ene.send_message(msg.channel, fmt)
+                await self.ene._send_message(msg.channel, fmt)
 
     async def get_video_data(self, msg, url, loop, **kwargs):
-        import youtube_dl
-
         use_avconv = kwargs.get('use_avconv', False)
         opts = {
             # 'format': 'bestaudio/best',

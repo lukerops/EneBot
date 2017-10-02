@@ -1,5 +1,6 @@
 import inspect
 import logging
+import copy
 
 log = logging.getLogger('discord')
 
@@ -34,8 +35,18 @@ class Plugin(metaclass=PluginMeta):
         pass
 
     async def _on_message(self, message):
-        for command_name, func in self.commands.items():
-            await func(message)
+        if self.ene.prefix == message.content[:len(self.ene.prefix)]:
+            message_aux = copy.deepcopy(message)
+            message_aux.content = message_aux.content[len(self.ene.prefix):]
+
+            command = message_aux.content.split(" ")[0]
+            message_aux.content = message_aux.content[len(command):]
+
+            for command_name, func in self.commands.items():
+                if command_name == command:
+                    await func(message_aux)
+                    await self.ene._delete_message(message, self.ene.wait_time)
+                    break
         await self.on_message(message)
 
     async def on_message(self, message):
