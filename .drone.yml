@@ -19,5 +19,11 @@ steps:
   commands:
   - pwd
   - ls -lh
+  
+- name: discord notification
+  image: appleboy/drone-discord
+  settings:
+    webhook_id: 742753339946696714
+    webhook_token: Bc1vaoA5uA73Ig2qyMN0va4QCvdX8Du-s4OlsnTOj25IMXQkeSd7wzebH6WVClAkJxi2
 
 ...
