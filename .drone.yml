@@ -1,0 +1,23 @@
+---
+kind: pipeline
+type: docker
+name: default
+
+platform:
+  os: linux
+  arch: arm64
+
+steps:
+- name: python
+  image: python:3.8-alpine
+  commands:
+  - python --version
+  - python3 --version
+
+- name: shell
+  image: busybox
+  commands:
+  - pwd
+  - ls -lh
+
+...
